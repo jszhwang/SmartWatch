@@ -14,7 +14,7 @@ void *app_main_screen(app_main_ctx_t *ctx)
     while(1)
     {
     } 
-    
+    //totototo
 }
 
 void *app_setup_screen(app_main_ctx_t *ctx)
