@@ -40,7 +40,7 @@ void app_main_func(void *arg)
             break;
         case APP_MAIN_STATE_RUNNING:
             do{
-                pfn = pfn(pCtx);
+                pfn = (fn)pfn(pCtx);
             }while(pfn != NULL);
             pCtx->state = APP_MAIN_STATE_IDLE;
             break;
