@@ -1,7 +1,6 @@
 #include "app_ble.h"
 #include "nrf_log.h"
 
-static APP_BLE app_ble_ctx = {0};
 
 
 static uint16_t on_play_cmd(uint8_t *buf, uint16_t sz)
@@ -33,84 +32,82 @@ const CMD_TBL cmd_tbl[] = {
 void app_ble_task( void * parameter)
 {
     BaseType_t ret; 
+    APP_BLE *ctx = (APP_BLE *)parameter;
     while(1)
     {
-        ret = xSemaphoreTake(app_ble_ctx.app_ble_semaphore, portMAX_DELAY);
+        ret = xSemaphoreTake(ctx->app_ble_semaphore, portMAX_DELAY);
         if(ret == pdPASS)
         {
-            ret = xSemaphoreTakeRecursive(app_ble_ctx.app_ble_mutex, pdMS_TO_TICKS(10));
+            ret = xSemaphoreTakeRecursive(ctx->app_ble_mutex, pdMS_TO_TICKS(10));
             if(ret == pdPASS)
             {
                 do{
-                    switch(app_ble_ctx.app_ble_state)
+                    switch(ctx->app_ble_state)
                     {
                     case APP_BLE_STATE_SOP:
-                        if(app_ble_ctx.app_ble_packet.cmd_header.header == 0x55)
+                        if(ctx->app_ble_pack->cmd_header.header == 0x55)
                         {
-                            app_ble_ctx.buf_tail++;
-                            app_ble_ctx.app_ble_state = APP_BLE_STATE_CMD;
+                            ctx->buf_tail++;
+                            ctx->app_ble_state = APP_BLE_STATE_CMD;
                         }
                         break;
                     case APP_BLE_STATE_CMD:
                         {
-                            app_ble_ctx.buf_tail++;
+                            ctx->buf_tail++;
                             for(uint8_t i = 0; i < sizeof(cmd_tbl)/sizeof(cmd_tbl[0]); i++)
                             {
-                                if(app_ble_ctx.app_ble_packet.cmd_header.cmd == cmd_tbl[i].cmd)
+                                if(ctx->app_ble_pack->cmd_header.cmd == cmd_tbl[i].cmd)
                                 {
-                                    uint16_t len = cmd_tbl[i].fn(&app_ble_ctx.app_ble_packet.cmd_buf[sizeof(app_ble_ctx.app_ble_packet.cmd_header)], \
-                                        app_ble_ctx.app_ble_packet.cmd_header.length);
-                                    app_ble_ctx.app_ble_packet.cmd_header.length = len;
-                                    app_ble_ctx.cb(app_ble_ctx.app_ble_packet.cmd_buf, len + sizeof(app_ble_ctx.app_ble_packet.cmd_header));
+                                    uint16_t len = cmd_tbl[i].fn(&ctx->app_ble_pack->cmd_buf[sizeof(ctx->app_ble_pack->cmd_header)], \
+                                        ctx->app_ble_pack->cmd_header.length);
+                                    ctx->app_ble_pack->cmd_header.length = len;
+                                    ctx->cb(ctx->app_ble_pack->cmd_buf, len + sizeof(ctx->app_ble_pack->cmd_header));
                                 }
                             }
-                            app_ble_ctx.app_ble_state = APP_BLE_STATE_SOP;
+                            ctx->app_ble_state = APP_BLE_STATE_SOP;
                         }
                         break;
                     case APP_BLE_STATE_LEN:
                     case APP_BLE_STATE_DAT:
                     default: 
-                        app_ble_ctx.app_ble_state = APP_BLE_STATE_SOP;
+                        ctx->app_ble_state = APP_BLE_STATE_SOP;
                         break;
                     }
-                }while(app_ble_ctx.app_ble_state != APP_BLE_STATE_SOP);
+                }while(ctx->app_ble_state != APP_BLE_STATE_SOP);
             }
-            xSemaphoreGiveRecursive(app_ble_ctx.app_ble_mutex);
+            xSemaphoreGiveRecursive(ctx->app_ble_mutex);
         }
     }
 
 }
 
-void app_ble_init(app_ble_event_handler_t cb)
+void app_ble_init(APP_BLE *ctx)
 {
-    app_ble_ctx.app_ble_semaphore = xSemaphoreCreateBinary();
-    app_ble_ctx.app_ble_mutex = xSemaphoreCreateRecursiveMutex();
-    xTaskCreate(app_ble_task, "btask", 128, NULL, 5, &app_ble_ctx.app_ble_task);
-    if(cb != NULL)
-    {
-        app_ble_ctx.cb = cb;
-    }
+    ctx->app_ble_semaphore = xSemaphoreCreateBinary();
+    ctx->app_ble_mutex = xSemaphoreCreateRecursiveMutex();
+    xTaskCreate(app_ble_task, "btask", 128, ctx, 5, &ctx->app_ble_task);
 }
 
-void app_ble_set_data(uint8_t *buf, uint16_t sz)
+
+void app_ble_set_data(APP_BLE *ctx, uint8_t *buf, uint16_t sz)
 {
     BaseType_t ret;
-    ret = xSemaphoreTakeRecursive(app_ble_ctx.app_ble_mutex, portMAX_DELAY);
+    ret = xSemaphoreTakeRecursive(ctx->app_ble_mutex, portMAX_DELAY);
 
     if(ret == pdPASS)
     {
-        memcpy(app_ble_ctx.app_ble_packet.cmd_buf, buf, sz);
-        app_ble_ctx.buf_head = sz;
-        app_ble_ctx.buf_tail = 0;
+        memcpy(ctx->app_ble_pack->cmd_buf, buf, sz);
+        ctx->buf_head = sz;
+        ctx->buf_tail = 0;
     }
 
-    xSemaphoreGiveRecursive(app_ble_ctx.app_ble_mutex);
+    xSemaphoreGiveRecursive(ctx->app_ble_mutex);
 }
 
-void app_ble_set_data_notification(bool notified)
+void app_ble_set_data_notification(APP_BLE *ctx, bool notified)
 {
     if(notified)
     {
-        xSemaphoreGive(app_ble_ctx.app_ble_semaphore);
+        xSemaphoreGive(ctx->app_ble_semaphore);
     }
 }

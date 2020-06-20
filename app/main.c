@@ -145,6 +145,7 @@ NRF_BLE_GATT_DEF(m_gatt);                                           /**< GATT mo
 NRF_BLE_QWR_DEF(m_qwr);                                             /**< Context for the Queued Write module.*/
 BLE_NUS_DEF(m_nus, NRF_SDH_BLE_TOTAL_LINK_COUNT);                   /**< BLE NUS service instance. */
 BLE_ADVERTISING_DEF(m_advertising);                                 /**< Advertising module instance. */
+APP_BLE_DEF(app_ble, NULL);
 app_main_ctx_t app_main_ctx = {0};
 
 static uint16_t m_conn_handle         = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -214,8 +215,8 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
     {
         NRF_LOG_INFO("Received %d bytes from BLE NUS.", p_evt->params.rx_data.length);
         NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
-        app_ble_set_data((uint8_t *)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
-        app_ble_set_data_notification(true);
+      //  app_ble_set_data((uint8_t *)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+       // app_ble_set_data_notification(true);
     }
 }
 
@@ -997,7 +998,7 @@ int main(void)
     }
 #endif
     app_main_init(&app_main_ctx);
-    app_ble_init(app_ble_event_handler);
+    //app_ble_init(app_ble_event_handler);
     // Activate deep sleep mode.
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 

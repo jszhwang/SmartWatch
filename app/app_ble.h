@@ -39,7 +39,7 @@ typedef struct app_ble
 {
     app_ble_event_handler_t cb;
     enum app_ble_state app_ble_state;
-    union app_ble_proto app_ble_packet;
+    union app_ble_proto *const app_ble_pack;
     int32_t buf_sz;
     int32_t buf_head;
     int32_t buf_tail;
@@ -49,8 +49,20 @@ typedef struct app_ble
 }APP_BLE;
 
 
-void app_ble_init(app_ble_event_handler_t cb);
-void app_ble_set_data(uint8_t *buf, uint16_t sz);
-void app_ble_set_data_notification(bool notified);
+#define APP_BLE_DEF(_name, _cb)                     \
+    union app_ble_proto _name##_ble_packet;         \
+    static APP_BLE _name = {                        \
+        .cb = _cb,                                  \
+        .buf_head = 0,                              \
+        .buf_tail = 0,                              \
+        .app_ble_state = APP_BLE_STATE_SOP,         \
+        .buf_sz = 128,                              \
+        .app_ble_pack = &_name##_ble_packet,        \
+    }                                             
+
+
+void app_ble_init(APP_BLE *ctx);
+void app_ble_set_data(APP_BLE *ctx, uint8_t *buf, uint16_t sz);
+void app_ble_set_data_notification(APP_BLE *ctx, bool notified);
 
 #endif
