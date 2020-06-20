@@ -86,7 +86,7 @@
 #include "nrf_log_default_backends.h"
      
 #include "app_main.h"
-
+#include "app_ble.h"
 
 
 
@@ -193,6 +193,13 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 }
 
 
+uint16_t app_ble_event_handler(uint8_t *buf, uint16_t sz)
+{
+    ble_nus_data_send(&m_nus, buf, &sz, m_conn_handle);
+    return 0;
+}
+
+
 /**@brief Function for handling the data from the Nordic UART Service.
  *
  * @details This function will process the data received from the Nordic UART BLE Service and send
@@ -207,7 +214,8 @@ static void nus_data_handler(ble_nus_evt_t * p_evt)
     {
         NRF_LOG_INFO("Received %d bytes from BLE NUS.", p_evt->params.rx_data.length);
         NRF_LOG_HEXDUMP_INFO(p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
-
+        app_ble_set_data((uint8_t *)p_evt->params.rx_data.p_data, p_evt->params.rx_data.length);
+        app_ble_set_data_notification(true);
     }
 }
 
@@ -763,13 +771,14 @@ static void ble_stack_init(void)
 static void bsp_event_handler(bsp_event_t event)
 {
     ret_code_t err_code;
-
+    uint8_t key_code = BSP_EVENT_NOTHING;
     switch (event)
     {
         case BSP_EVENT_KEY_0:
             break;
         case BSP_EVENT_KEY_1:
-            xSemaphoreGive(app_main_ctx.xButtonSemphor); 
+ //           xSemaphoreGive(app_main_ctx.xButtonSemphor); 
+            xQueueSend(app_main_ctx.btn_msg, &key_code, 0);
             break;
         case BSP_EVENT_KEY_2:
             break;
@@ -988,6 +997,7 @@ int main(void)
     }
 #endif
     app_main_init(&app_main_ctx);
+    app_ble_init(app_ble_event_handler);
     // Activate deep sleep mode.
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 

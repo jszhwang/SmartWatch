@@ -11,6 +11,8 @@
 #include "task.h"
 #include "timers.h"
 #include "semphr.h"
+#include "queue.h"
+#include "timers.h"
 
 typedef enum{
    APP_MAIN_STATE_IDLE = 0,
@@ -23,7 +25,9 @@ typedef struct{
     TaskHandle_t app_main_task;
     TimerHandle_t app_main_timer;
     SemaphoreHandle_t xButtonSemphor;
+    QueueHandle_t btn_msg;
     uint8_t app_timer_counter;
+    
 }app_main_ctx_t;
 
 void app_main_init(app_main_ctx_t *ctx);
